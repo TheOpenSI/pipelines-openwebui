@@ -21,13 +21,13 @@ baseUrl = "http://localhost:8000"
 # result = response.json()["result"]
 # print(result["query_analyser"]["llm_name"])
 
-response = requests.post(
-    f"{baseUrl}/cosmic",
-    json={"user_message": "Hello, how can you help me?"}
-)
-print(response.text)
-if response.status_code == 200:
-    print(response.json())
+# response = requests.post(
+#     f"{baseUrl}/cosmic",
+#     json={"user_message": "Hello, how can you help me?"}
+# )
+# print(response.text)
+# if response.status_code == 200:
+#     print(response.json())
 
 
 
