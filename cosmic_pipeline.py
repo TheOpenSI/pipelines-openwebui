@@ -1,7 +1,5 @@
 
-import re
 import sys, os, dotenv, shutil, yaml
-from turtle import pos
 import pandas as pd
 import requests
 
@@ -15,11 +13,15 @@ from typing import List
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-baseUrl = "http://localhost:8000"
+baseUrl = os.environ.get("COSMIC_API_BASE_URL", "http://cosmic:3000")
+
+print(f"baseUrl: {baseUrl}")
+
+# baseUrl = "http://localhost:8000"
 
 # response = requests.get(f"{baseUrl}/config")
 # result = response.json()["result"]
-# print(result["query_analyser"]["llm_name"])
+# print(result)
 
 # response = requests.post(
 #     f"{baseUrl}/cosmic",
