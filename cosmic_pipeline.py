@@ -15,12 +15,14 @@ from zoneinfo import ZoneInfo
 
 baseUrl = os.environ.get("COSMIC_API_BASE_URL", "http://cosmic:3000")
 
-print(f"baseUrl: {baseUrl}")
+# print(f"baseUrl: {baseUrl}")
 
 # baseUrl = "http://localhost:8000"
 
-# response = requests.get(f"{baseUrl}/config")
-# result = response.json()["result"]
+# response = requests.post(f"{baseUrl}/setup-qa/1")
+# if response.status_code != 200:
+#     raise Exception(f"Error during /setup-qa API call: {response.text}")
+# result = response.json()
 # print(result)
 
 # response = requests.post(
@@ -30,8 +32,6 @@ print(f"baseUrl: {baseUrl}")
 # print(response.text)
 # if response.status_code == 200:
 #     print(response.json())
-
-
 
 
 class Pipeline:
@@ -57,23 +57,24 @@ class Pipeline:
             "query_count": 0
         }
 
-        if not os.path.exists(self.config_path):
-            config_path = os.path.join(self.root, "scripts/configs/config.yaml")
-            shutil.copyfile(config_path, self.config_path)
+        # if not os.path.exists(self.config_path):
+        #     config_path = os.path.join(self.root, "scripts/configs/config.yaml")
+        #     shutil.copyfile(config_path, self.config_path)
 
-        self.config_modify_timestamp = str(os.path.getmtime(self.config_path))
-        self.MAX_QUERIES_PER_USER = 5
+        # self.config_modify_timestamp = str(os.path.getmtime(self.config_path))
+        self.config_modify_timestamp = "0"
+        self.MAX_QUERIES_PER_USER = int(os.environ.get("MAX_QUERIES_PER_USER", "5"))
 
-        # Check if vector database is valid.
-        with open(self.config_path, "r") as file:
-            config = yaml.safe_load(file)
+        # # Check if vector database is valid.
+        # with open(self.config_path, "r") as file:
+        #     config = yaml.safe_load(file)
 
-        if not os.path.exists(config["rag"]["vector_db_path"]):
-            config["rag"]["vector_db_path"] = \
-                f"{self.root}/data/cosmic/vector_db_cosmic"
+        # if not os.path.exists(config["rag"]["vector_db_path"]):
+        #     config["rag"]["vector_db_path"] = \
+        #         f"{self.root}/data/cosmic/vector_db_cosmic"
 
-        with open(self.config_path, "w") as file:
-            yaml.safe_dump(config, file)
+        # with open(self.config_path, "w") as file:
+        #     yaml.safe_dump(config, file)
 
         # Set OPENAI_API_KEY first before constructing OpenSICoSMIC since this config will
         # be directly used in OpenSICoSMIC().
@@ -83,15 +84,16 @@ class Pipeline:
 
     def update_openai_key(self):
         # Set up OPENAI_API_KEY globally through root's .env.
-        envs = dotenv.dotenv_values(self.env_path)
+        # envs = dotenv.dotenv_values(self.env_path)
 
-        if "OPENAI_API_KEY" in envs.keys():
-            self.openai_api_key = envs["OPENAI_API_KEY"]
-        else:
-            self.openai_api_key = ""
+        # if "OPENAI_API_KEY" in envs.keys():
+        #     # self.openai_api_key = envs["OPENAI_API_KEY"]
+        self.openai_api_key = os.environ.get("OPENAI_API_KEY", "0p3n-w3bu!")
+        # else:
+        #     self.openai_api_key = ""
 
-        os.environ["OPENAI_API_KEY"] = self.openai_api_key
-        self.valves = self.Valves(**{"OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", "")})
+        # os.environ["OPENAI_API_KEY"] = self.openai_api_key
+        # self.valves = self.Valves(**{"OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", "")})
 
     def check_openai_key(self):
         try:
@@ -126,12 +128,8 @@ class Pipeline:
             return answer
         except requests.exceptions.RequestException as e:
             raise Exception(f"Error fetching config from the server: {e}")
-
-    async def on_startup(self):
-        print(f"on_startup:{__name__}")
-
-    async def on_shutdown(self):
-        print(f"on_shutdown:{__name__}")
+        
+    def quit_cosmic(self):
         try:
             response = requests.get(f"{baseUrl}/quit")
             if response.status_code != 200:
@@ -139,6 +137,13 @@ class Pipeline:
             print(response.json()["message"])
         except requests.exceptions.RequestException as e:
             raise Exception(f"Error during /quit API call: {e}")
+
+    async def on_startup(self):
+        print(f"on_startup:{__name__}")
+
+    async def on_shutdown(self):
+        print(f"on_shutdown:{__name__}")
+        self.quit_cosmic()
         # self.opensi_cosmic.quit()
 
     def update_statistic_table(
@@ -261,12 +266,14 @@ class Pipeline:
         # Some will run twice for history, just ignore.
         if user_message[:3] == "###": return ""
 
-        current_config_modify_timestamp = str(os.path.getmtime(self.config_path))
-        current_openai_api_key = os.environ["OPENAI_API_KEY"]
+        # current_config_modify_timestamp = str(os.path.getmtime(self.config_path))
+        current_config_modify_timestamp = "0"
+        print(f"current_config_modify_timestamp: {current_config_modify_timestamp}")
+        current_openai_api_key = os.environ.get("OPENAI_API_KEY", "0p3n-w3bu!")
 
         if (current_config_modify_timestamp != self.config_modify_timestamp) \
             or (current_openai_api_key != self.openai_api_key):
-            self.on_shutdown()
+            self.quit_cosmic()
             # self.opensi_cosmic.quit()
             self.openai_api_key = current_openai_api_key
             self.config_modify_timestamp = current_config_modify_timestamp
@@ -286,10 +293,10 @@ class Pipeline:
         # self.opensi_cosmic.set_up_qa(str(user_id))
 
         try:
-            response = requests.get(f"{baseUrl}/setup-qa/{str(user_id)}")
+            response = requests.post(f"{baseUrl}/setup-qa/{str(user_id)}")
             if response.status_code != 200:
                 raise Exception(f"Error during /setup-qa API call: {response.text}")
-            print(response.json().message)
+            print(response.json().get("message", ""))
         except requests.exceptions.RequestException as e:
             raise Exception(f"Error during /setup-qa API call: {e}")
 
@@ -301,12 +308,12 @@ class Pipeline:
             datetime.now(tz=ZoneInfo("Australia/Sydney")),
             '%d-%m-%Y,%H:%M:%S'
         )
-        self.update_statistic_per_query(
-            user_message,
-            user_id,
-            user_email,
-            current_time
-        )
+        # self.update_statistic_per_query(
+        #     user_message,
+        #     user_id,
+        #     user_email,
+        #     current_time
+        # )
 
         if (user_role != "admin") and (current_count >= self.MAX_QUERIES_PER_USER):
             # Return a message indicating the limit has been reached
@@ -346,3 +353,17 @@ class Pipeline:
             if answer is None: answer = 'Successfully!'
 
         return answer
+
+# pipeline = Pipeline()
+
+# body = {
+#     "user": {
+#         "id": 1,
+#         "role": "admin",
+#         "email": "opensi@canberra.edu.au"
+#     }
+# }
+
+# user_message = "Hello, how can you help me?"
+
+# print(pipeline.pipe(user_message=user_message, model_id="model_id", messages=[], body=body))
