@@ -1,32 +1,37 @@
-import  os
+import os
 import requests
 from pydantic import BaseModel, Field
 from typing import List
+from main import reload
 
 baseUrl = os.environ.get("COSMIC_API_BASE_URL", "http://localhost:8000")
 
 class Pipeline:
     class Valves(BaseModel):
-        # TODO: Configure the config fields to update the config.yaml file.
-        RATE_LIMIT: int = Field(default=5, description="Rate limit for the pipeline")
-        WORD_LIMIT: int = Field(default=300, description="Word limit when getting page summary")
-        WIKIPEDIA_ROOT: str = Field(default="https://en.wikipedia.org/wiki", description="Wikipedia root URL")
-
+        pass
+        # WORD_LIMIT: int = Field(title="Word Limit", default=300, description="Word limit when getting page summary")
+        # WIKI_ROOT: str = Field(title="Wiki", default="https://en.wikipedia.org/wiki", description="Wikipedia root URL")
+        # SOURCE_TYPE: str = Field(title="Source Type", default="Wikipedia", description="Source type for the pipeline", enum=["Wikipedia", "Google", "Custom"])
     # A class-level dictionary to keep track of user queries. 
     # Key: user_id, Value: number of queries asked.
     user_queries_count = {}
 
     def __init__(self):
+        self.id = "cosmic_pipeline"
         self.name = "OpenSI-CoSMIC"
 
-        self.valves = self.Valves(
-            **{k: os.getenv(k, v.default) for k, v in self.Valves.model_fields.items()}
-        )
+        # self.valves = self.Valves(
+        #     **{k: os.getenv(k, v.default) for k, v in self.Valves.model_fields.items()}
+        # )
 
-        print("TEST", self.valves.RATE_LIMIT)
+        # print("TEST", self.valves.RATE_LIMIT)
 
         self.MAX_QUERIES_PER_USER = int(os.environ.get("MAX_QUERIES_PER_USER", "5"))
      
+    # async def on_valves_updated(self):
+    #     pass
+
+
     def quit_cosmic(self):
         try:
             response = requests.get(f"{baseUrl}/quit")
@@ -94,6 +99,6 @@ class Pipeline:
 #     }
 # }
 
-# user_message = "Hello, how can you help me?"
+# user_message = "Do you know what was my first question?"
 
 # print(pipeline.pipe(user_message=user_message, model_id="model_id", messages=[], body=body))
